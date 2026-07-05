@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORAL AI 3D | Planetary Risk Visualizer</title>
+    <meta name="description" content="Advanced 3D planetary risk visualization dashboard for ocean pollution monitoring powered by AI.">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Globe.gl Dependencies -->
+    <script src="//unpkg.com/three"></script>
+    <script src="//unpkg.com/globe.gl"></script>
+    <script src="/data.js"></script>
+
+    <style>
+        /* ════════════════════════════════════════════════ */
+        /* DESIGN IDENTITY: DEEP OCEAN BIOLUMINESCENCE    */
+        /* ════════════════════════════════════════════════ */
+
+        /* ─── CSS Variables ─── */
+        :root {
+            /* Backgrounds */
+            --bg-abyss: #020C14;
+            --bg-deep: #041520;
+            --bg-deep-legacy: #020B18;
+            --surface: rgba(4, 22, 36, 0.94);
+            --bg-card: rgba(5, 25, 42, 0.88);
+            --bg-card-hover: rgba(6, 32, 52, 0.95);
+
+            /* Bioluminescent Accents */
+            --bio-teal: #00F5C4;
+            --bio-teal-dim: #00C49A;
+            --bio-teal-glow: rgba(0, 245, 196, 0.18);
+            --bio-teal-pulse: rgba(0, 245, 196, 0.06);
+            --accent-cyan: #00F5C4;
+            --accent-blue: #0098B8;
+
+            /* Borders */
+            --border-subtle: rgba(0, 245, 196, 0.1);
+            --border-card: rgba(0, 180, 180, 0.12);
+            --border-glow: rgba(0, 245, 196, 0.3);
+            --border-warm: rgba(255, 171, 64, 0.2);
+
+            /* Risk Spectrum */
+            --risk-critical: #FF3D5A;
+            --risk-critical-glow: rgba(255, 61, 90, 0.25);
+            --risk-high: #FF8C42;
+            --risk-high-glow: rgba(255, 140, 66, 0.2);
+            --risk-moderate: #FFD166;
+            --risk-moderate-glow: rgba(255, 209, 102, 0.15);
+            --risk-low: #00F5C4;
+            --risk-low-glow: rgba(0, 245, 196, 0.15);
+
+            /* Warm Amber */
+            --amber-warm: #FFAB40;
+            --amber-glow: rgba(255, 171, 64, 0.2);
+
+            /* Text */
+            --text-primary: rgba(255, 255, 255, 0.95);
+            --text-secondary: rgba(180, 220, 235, 0.7);
+            --text-muted: rgba(120, 170, 195, 0.45);
+            --text-data: #00F5C4;
+
+            /* Fonts */
+            --font-ui: 'Space Grotesk', 'Inter', sans-serif;
+            --font-display: 'Space Grotesk', 'Inter', sans-serif;
+            --font-data: 'JetBrains Mono', 'Rajdhani', sans-serif;
+            --font-body: 'Inter', 'DM Sans', sans-serif;
+        }
+
+        /* ─── Reset & Base ─── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-ui);
+            background: var(--bg-abyss);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            color: var(--text-primary);
+            user-select: none;
+            position: relative;
+        }
+
+        /* Animated deep ocean background layer */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 20% 30%, rgba(0, 80, 100, 0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 70%, rgba(0, 40, 80, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse 100% 80% at 50% 100%, rgba(0, 100, 120, 0.06) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: 0;
+            animation: oceanBreath 8s ease-in-out infinite alternate;
+        }
+
+        @keyframes oceanBreath {
+            0% { opacity: 0.7; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.02); }
+        }
+
+        /* ─── Bioluminescent Particle Animations ─── */
+        @keyframes particleFloat {
+            0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.12; }
+            33% { transform: translateY(-30px) translateX(10px); opacity: 0.3; }
+            66% { transform: translateY(-15px) translateX(-8px); opacity: 0.18; }
+        }
+
+        /* Ambient blobs */
+        .ambient-blob {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(80px);
+        }
+        .ambient-blob-1 {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(0,180,160,0.06) 0%, transparent 70%);
+            top: -200px; left: -100px;
+            animation: blobDrift 15s ease-in-out infinite alternate;
+        }
+        .ambient-blob-2 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(255,140,66,0.04) 0%, transparent 70%);
+            bottom: 0; right: -100px;
+            animation: blobDrift 12s ease-in-out infinite alternate-reverse;
+        }
+        @keyframes blobDrift {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(40px, -30px) scale(1.15); }
+        }
+
+        /* Bioluminescent tide at bottom */
+        .ocean-tide {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 80px;
+            background: linear-gradient(
+                to top,
+                rgba(0, 180, 150, 0.07) 0%,
+                rgba(0, 120, 180, 0.03) 50%,
+                transparent 100%
+            );
+            pointer-events: none;
+            z-index: 2;
+            animation: tideSway 8s ease-in-out infinite alternate;
+        }
+        @keyframes tideSway {
+            0% { opacity: 0.4; transform: scaleX(1) translateX(-2%); }
+            50% { opacity: 0.9; }
+            100% { opacity: 0.5; transform: scaleX(1.03) translateX(2%); }
+        }
+
+        /* ─── Star Field Background ─── */
+        #starfield {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .star {
+            position: absolute;
+            border-radius: 50%;
+            background: white;
+        }
+
+        /* ─── Globe Container ─── */
+        #globe-viz {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+        }
+
+        /* ─── Top Bar ─── */
+        #topbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 56px;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            background: rgba(2, 12, 20, 0.92);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid rgba(0, 245, 196, 0.12);
+            box-shadow: 0 1px 0 rgba(0,245,196,0.06), 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .topbar-brand-name {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 20px;
+            letter-spacing: 0.05em;
+            background: linear-gradient(135deg, #00F5C4 0%, #00B4D8 50%, #7DF9FF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 12px rgba(0,245,196,0.4));
+        }
+        .topbar-separator {
+            color: rgba(0, 245, 196, 0.3);
+            font-size: 18px;
+        }
+        .topbar-subtitle {
+            font-family: var(--font-ui);
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            color: var(--text-secondary);
+        }
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: rgba(0, 245, 196, 0.08);
+            border: 1px solid rgba(0, 245, 196, 0.3);
+            font-family: var(--font-ui);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            color: var(--bio-teal);
+        }
+        .status-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--bio-teal);
+            box-shadow: 0 0 8px var(--bio-teal);
+            animation: livePulse 2s ease-in-out infinite;
+        }
+        @keyframes livePulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.4; }
+        }
+
+        /* ─── Left Panel ─── */
+        #left-panel {
+            position: fixed;
+            top: 80px;
+            left: 16px;
+            width: 280px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .panel-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px) saturate(150%);
+            -webkit-backdrop-filter: blur(16px) saturate(150%);
+            border: 1px solid var(--border-card);
+            border-radius: 20px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+        /* Card shimmer line on top */
+        .panel-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0,245,196,0.3), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .panel-card:hover {
+            border-color: rgba(0, 245, 196, 0.2);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,245,196,0.08), 0 0 30px rgba(0,245,196,0.04);
+        }
+        .panel-card:hover::after { opacity: 1; }
+
+        .panel-header {
+            font-family: var(--font-display);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--bio-teal);
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid var(--border-subtle);
+            text-shadow: 0 0 12px rgba(0,245,196,0.3);
+        }
+
+        /* Metric Buttons */
+        .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .metric-btn {
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-family: var(--font-display);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: rgba(4, 22, 36, 0.6);
+            border: 1px solid rgba(0, 245, 196, 0.15);
+            color: var(--text-secondary);
+            position: relative;
+            overflow: hidden;
+        }
+        .metric-btn:hover {
+            border-color: rgba(0, 245, 196, 0.35);
+            color: rgba(255,255,255,0.9);
+            background: rgba(0, 245, 196, 0.06);
+            transform: translateY(-1px);
+        }
+        .metric-btn.active {
+            background: linear-gradient(135deg, #00C9A7 0%, #0098B8 100%);
+            color: #020C14;
+            border: none;
+            box-shadow: 0 0 20px rgba(0, 201, 167, 0.35), 0 4px 12px rgba(0,0,0,0.3);
+            font-weight: 700;
+        }
+        /* Ripple effect */
+        .metric-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.12) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .metric-btn:active::after { opacity: 1; }
+
+        /* Labels */
+        .field-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 6px;
+            font-family: var(--font-body);
+        }
+
+        /* Select Dropdown */
+        .styled-select {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: rgba(2, 12, 20, 0.9);
+            border: 1px solid rgba(0, 245, 196, 0.15);
+            color: var(--text-secondary);
+            font-family: var(--font-ui);
+            font-size: 11px;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300F5C4' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            transition: border-color 0.3s ease;
+        }
+        .styled-select:focus { border-color: var(--bio-teal); box-shadow: 0 0 0 2px rgba(0,245,196,0.1); }
+        .styled-select option { background: #041520; color: white; }
+
+        /* Slider */
+        .slider-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .slider-val {
+            font-family: var(--font-data);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--bio-teal);
+            text-shadow: 0 0 8px rgba(0,245,196,0.3);
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(0, 245, 196, 0.15);
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            background: var(--bio-teal);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 245, 196, 0.5), 0 0 4px rgba(0,245,196,0.8);
+            transition: transform 0.2s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            background: var(--bio-teal);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 245, 196, 0.5);
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: linear-gradient(90deg, var(--bio-teal), rgba(0,245,196,0.1));
+        }
+
+        /* Toggle Switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 36px; height: 20px;
+            cursor: pointer;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-track {
+            position: absolute;
+            inset: 0;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.08);
+            transition: all 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-track {
+            background: var(--bio-teal);
+            box-shadow: 0 0 12px rgba(0, 245, 196, 0.4);
+        }
+        .toggle-thumb {
+            position: absolute;
+            top: 2px; left: 2px;
+            width: 16px; height: 16px;
+            border-radius: 50%;
+            background: white;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
+        .toggle-switch input:checked ~ .toggle-thumb {
+            transform: translateX(16px);
+        }
+
+        /* Legend */
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 0;
+            transition: all 0.2s ease;
+        }
+        .legend-item:hover {
+            transform: translateX(3px);
+        }
+        .legend-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+        .legend-item:hover .legend-dot { transform: scale(1.4); }
+        .legend-dot.critical { background: var(--risk-critical); box-shadow: 0 0 8px var(--risk-critical-glow); }
+        .legend-dot.high { background: var(--risk-high); box-shadow: 0 0 8px var(--risk-high-glow); }
+        .legend-dot.moderate { background: var(--risk-moderate); box-shadow: 0 0 8px var(--risk-moderate-glow); }
+        .legend-dot.low { background: var(--risk-low); box-shadow: 0 0 8px var(--risk-low-glow); }
+        .legend-text {
+            font-size: 12px;
+            font-family: var(--font-body);
+            color: var(--text-secondary);
+        }
+        .legend-river-icon {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            border: 1.5px solid var(--bio-teal);
+            position: relative;
+            flex-shrink: 0;
+        }
+        .legend-river-icon::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            background: var(--bio-teal);
+            animation: livePulse 2s infinite;
+        }
+
+        /* Instructions */
+        .instructions {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.8;
+            font-family: var(--font-body);
+        }
+
+        /* ─── Right Panel (Inspection Module) ─── */
+        #details-sidebar {
+            position: fixed;
+            top: 80px;
+            right: 16px;
+            width: 300px;
+            z-index: 10;
+            background: rgba(2, 12, 20, 0.95);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid var(--border-warm);
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            opacity: 0;
+            transform: translateX(20px);
+            pointer-events: none;
+            transition: opacity 0.35s ease-out, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03);
+        }
+        #details-sidebar.visible {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+            animation: slideInRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        /* Sidebar top shimmer */
+        #details-sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,171,64,0.35), transparent);
+        }
+        .inspect-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 171, 64, 0.15);
+        }
+        .inspect-title {
+            font-family: var(--font-display);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.25em;
+            color: var(--amber-warm);
+            text-shadow: 0 0 10px rgba(255,171,64,0.3);
+        }
+        .close-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: rgba(255,255,255,0.4);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px 8px;
+            line-height: 1;
+            transition: all 0.2s ease;
+        }
+        .close-btn:hover {
+            color: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .cell-zone {
+            font-family: var(--font-display);
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+            line-height: 1.1;
+            letter-spacing: -0.01em;
+        }
+        .cell-coords {
+            font-family: var(--font-data);
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            letter-spacing: 0.05em;
+        }
+
+        /* NPI Score Block */
+        .npi-block {
+            padding: 18px;
+            border-radius: 16px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        /* Subtle radial glow behind score */
+        .npi-block::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 180px; height: 180px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,140,66,0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .npi-label {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: var(--text-muted);
+            font-family: var(--font-body);
+        }
+        .npi-value {
+            font-family: var(--font-data);
+            font-size: 60px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin: 6px 0;
+            position: relative;
+        }
+        .risk-badge {
+            display: inline-block;
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-family: var(--font-display);
+        }
+
+        /* Data Fields */
+        .data-field {
+            padding: 10px 0;
+            border-top: 1px solid rgba(0, 245, 196, 0.06);
+        }
+        .data-field-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            font-family: var(--font-body);
+        }
+        .data-field-value {
+            font-family: var(--font-data);
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            letter-spacing: 0.03em;
+        }
+        .data-field-value.distance {
+            color: var(--amber-warm);
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(255,171,64,0.3);
+        }
+        .data-field-value.river {
+            color: var(--bio-teal);
+            font-size: 15px;
+            text-shadow: 0 0 8px rgba(0,245,196,0.2);
+        }
+
+        /* Action Protocol */
+        .action-block {
+            background: rgba(0, 245, 196, 0.03);
+            border: 1px solid rgba(0, 245, 196, 0.08);
+            border-radius: 12px;
+            padding: 12px 14px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            font-family: var(--font-body);
+        }
+
+        /* ─── Globe Tooltip Override ─── */
+        .globe-tooltip {
+            background: rgba(2, 12, 20, 0.95) !important;
+            border: 1px solid rgba(0, 245, 196, 0.2) !important;
+            border-radius: 14px !important;
+            padding: 14px 18px !important;
+            font-family: var(--font-ui) !important;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,245,196,0.08) !important;
+            backdrop-filter: blur(16px) !important;
+            font-size: 12px !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* ─── Scrollbar ─── */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(2,12,20,0.5); }
+        ::-webkit-scrollbar-thumb { background: rgba(0,245,196,0.25); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,245,196,0.45); }
+
+        /* ─── Animations ─── */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.5; }
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 0.85; }
+        }
+
+        /* ─── Entrance Animation for Panels ─── */
+        @keyframes fadeSlideUp {
+            0% { opacity: 0; transform: translateY(16px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        #left-panel .panel-card:nth-child(1) { animation: fadeSlideUp 0.5s ease 0.1s both; }
+        #left-panel .panel-card:nth-child(2) { animation: fadeSlideUp 0.5s ease 0.2s both; }
+        #left-panel .panel-card:nth-child(3) { animation: fadeSlideUp 0.5s ease 0.3s both; }
+    </style>
+</head>
+<body>
+
+    <!-- Star Field Background -->
+    <div id="starfield"></div>
+
+    <!-- Globe Container -->
+    <div id="globe-viz"></div>
+
+    <!-- Top Bar -->
+    <header id="topbar">
+        <a href="index.html" class="topbar-brand">
+            <span class="topbar-brand-name">CORAL AI 3D</span>
+            <span class="topbar-separator">|</span>
+            <span class="topbar-subtitle">Planetary Risk Visualizer</span>
+        </a>
+        <div class="status-badge">
+            <span class="status-dot"></span>
+            <span>FastAPI Connection:</span>
+            <span id="connection-status" style="font-weight:600;">Checking...</span>
+        </div>
+    </header>
+
+    <!-- Left Panel — Globe Controls -->
+    <div id="left-panel">
+
+        <!-- Controls Card -->
+        <div class="panel-card">
+            <div class="panel-header">Globe Controls</div>
+
+            <!-- Metric Selector -->
+            <div style="margin-bottom:16px;">
+                <div class="field-label">Render Altitude Metric</div>
+                <div class="metric-grid">
+                    <button onclick="setMetric('rmnpi')" id="btn-rmnpi" class="metric-btn active">RM-NPI Risk</button>
+                    <button onclick="setMetric('sst')" id="btn-sst" class="metric-btn">Temp (SST)</button>
+                    <button onclick="setMetric('rainfall')" id="btn-rainfall" class="metric-btn">Rainfall</button>
+                    <button onclick="setMetric('discharge')" id="btn-discharge" class="metric-btn">Discharge</button>
+                </div>
+            </div>
+
+            <!-- Risk Filter -->
+            <div style="margin-bottom:16px;">
+                <div class="field-label">Risk Filter</div>
+                <select id="risk-filter" onchange="filterData()" class="styled-select">
+                    <option value="ALL">Show All Grid Cells</option>
+                    <option value="CRITICAL">Critical Risk Only</option>
+                    <option value="HIGH">High &amp; Critical Risk</option>
+                    <option value="MODERATE">Moderate and Above</option>
+                </select>
+            </div>
+
+            <!-- Auto-Rotation -->
+            <div style="margin-bottom:16px;">
+                <div class="slider-row">
+                    <span class="field-label" style="margin-bottom:0;">Auto-Rotation Speed</span>
+                    <span id="rotation-val" class="slider-val">0.5</span>
+                </div>
+                <input type="range" min="0" max="2" step="0.1" value="0.5" oninput="changeRotation(this.value)">
+            </div>
+
+            <!-- River Outflows Toggle -->
+            <div class="toggle-row">
+                <span class="field-label" style="margin-bottom:0;">Show River Outflows</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" checked onchange="toggleRiverMouths(this.checked)">
+                    <span class="toggle-track"></span>
+                    <span class="toggle-thumb"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Legend Card -->
+        <div class="panel-card">
+            <div class="panel-header">Legend</div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+                <div class="legend-item">
+                    <span class="legend-dot critical"></span>
+                    <span class="legend-text">Critical Risk (RM-NPI &gt; 0.8)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot high"></span>
+                    <span class="legend-text">High Risk (0.5 – 0.8)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot moderate"></span>
+                    <span class="legend-text">Moderate Stress (0.2 – 0.5)</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-dot low"></span>
+                    <span class="legend-text">Low Risk (&lt; 0.2)</span>
+                </div>
+                <div class="legend-item" style="border-top: 1px solid var(--border-subtle); padding-top:8px; margin-top:4px;">
+                    <span class="legend-river-icon"></span>
+                    <span class="legend-text">Major River Outflows (Rings)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="panel-card instructions">
+            <p>💡 Drag to rotate globe</p>
+            <p>🖱️ Scroll to zoom in/out</p>
+            <p>🎯 Click columns to inspect details</p>
+        </div>
+    </div>
+
+    <!-- Right Panel — Inspection Module -->
+    <div id="details-sidebar">
+        <div class="inspect-header">
+            <span class="inspect-title">Inspection Module</span>
+            <button onclick="closeDetails()" class="close-btn">✕</button>
+        </div>
+
+        <!-- Zone Header -->
+        <div>
+            <div id="cell-zone" class="cell-zone">Zone 01</div>
+            <div id="cell-coords" class="cell-coords">Lat: 13.08, Lon: 80.27</div>
+        </div>
+
+        <!-- NPI Score -->
+        <div id="risk-container" class="npi-block">
+            <div class="npi-label">Calculated NPI Score</div>
+            <div id="cell-rmnpi" class="npi-value" style="color:var(--risk-high);">0.870</div>
+            <span id="cell-risk-label" class="risk-badge">CRITICAL</span>
+        </div>
+
+        <!-- Associated River -->
+        <div class="data-field">
+            <div class="data-field-label">Associated River Mouth</div>
+            <div id="cell-river" class="data-field-value river">Cooum &amp; Adyar</div>
+        </div>
+
+        <!-- Data Grid -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0;">
+            <div class="data-field" style="padding-right:12px;">
+                <div class="data-field-label">Temperature (SST)</div>
+                <div id="cell-sst" class="data-field-value">30.1°C</div>
+            </div>
+            <div class="data-field" style="padding-left:12px; border-left:1px solid rgba(255,255,255,0.06);">
+                <div class="data-field-label">Rainfall Sum</div>
+                <div id="cell-rainfall" class="data-field-value">312 mm</div>
+            </div>
+        </div>
+
+        <div class="data-field">
+            <div class="data-field-label">Estimated Discharge</div>
+            <div id="cell-discharge" class="data-field-value">1450 m³/s</div>
+        </div>
+
+        <div class="data-field">
+            <div class="data-field-label" style="color:var(--risk-high);">Dynamic Distance to Coast</div>
+            <div id="cell-dist" class="data-field-value distance">-- km</div>
+        </div>
+
+        <!-- Action Protocol -->
+        <div>
+            <div class="data-field-label" style="margin-bottom:6px;">Action Protocol</div>
+            <div id="cell-action" class="action-block">
+                Immediate bio-sampling and satellite correlation required.
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Script Block ─── -->
+    <script>
+        // ── Generate Star Field ──
+        (function createStars() {
+            const container = document.getElementById('starfield');
+            for (let i = 0; i < 150; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                const size = Math.random() * 1.5 + 0.5;
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.opacity = (Math.random() * 0.5 + 0.3).toFixed(2);
+                if (Math.random() > 0.6) {
+                    star.style.animation = `twinkle ${(Math.random() * 4 + 3).toFixed(1)}s ease-in-out infinite`;
+                    star.style.animationDelay = (Math.random() * 5).toFixed(1) + 's';
+                }
+                container.appendChild(star);
+            }
+        })();
+
+        // ── State ──
+        let globeInstance = null;
+        let globalData = [];
+        let filteredData = [];
+        let currentMetric = 'rmnpi';
+        let showRivers = true;
+        let activePoint = null;
+        let hoverPoint = null;
+
+        // ── Haversine Distance ──
+        function haversineDist(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        // ── Map Labels (Cities, Oceans, Rivers) ──
+        const MAP_LABELS = [
+            // Cities
+            { name: "Chennai",        lat: 13.0827, lon: 80.2707, size: 0.45, type: "city" },
+            { name: "Kolkata",        lat: 22.5726, lon: 88.3639, size: 0.45, type: "city" },
+            { name: "Mumbai",         lat: 18.9667, lon: 72.8333, size: 0.45, type: "city" },
+            { name: "Kochi",          lat: 9.9312,  lon: 76.2673, size: 0.45, type: "city" },
+            { name: "Visakhapatnam",  lat: 17.6868, lon: 83.2185, size: 0.45, type: "city" },
+            { name: "Mangalore",      lat: 12.8688, lon: 74.8436, size: 0.45, type: "city" },
+            { name: "Goa",            lat: 15.2993, lon: 74.1240, size: 0.45, type: "city" },
+            { name: "Nagapattinam",   lat: 10.7672, lon: 79.8420, size: 0.45, type: "city" },
+            { name: "Tuticorin",      lat: 8.7642,  lon: 78.1348, size: 0.45, type: "city" },
+            // Oceans
+            { name: "BAY OF BENGAL",  lat: 14.5,    lon: 87.0,    size: 1.0,  type: "ocean" },
+            { name: "ARABIAN SEA",    lat: 15.0,    lon: 68.0,    size: 1.0,  type: "ocean" },
+            { name: "INDIAN OCEAN",   lat: 0.0,     lon: 80.0,    size: 1.2,  type: "ocean" },
+            // River names (positioned at midpoints of each river)
+            { name: "Ganga",          lat: 26.45, lon: 80.35, size: 0.4, type: "river" },
+            { name: "Brahmaputra",    lat: 26.8,  lon: 93.0,  size: 0.4, type: "river" },
+            { name: "Godavari",       lat: 18.5,  lon: 77.5,  size: 0.4, type: "river" },
+            { name: "Krishna",        lat: 16.7,  lon: 77.5,  size: 0.4, type: "river" },
+            { name: "Kaveri",         lat: 11.8,  lon: 77.2,  size: 0.4, type: "river" },
+            { name: "Narmada",        lat: 22.5,  lon: 77.0,  size: 0.4, type: "river" },
+            { name: "Mahanadi",       lat: 21.1,  lon: 83.5,  size: 0.4, type: "river" },
+            { name: "Periyar",        lat: 10.05, lon: 76.8,  size: 0.35, type: "river" }
+        ];
+
+        // ── Real River Geographic Paths (lat/lon waypoints) ──
+        const RIVER_PATHS = [
+            {
+                name: 'Ganga',
+                color: ['rgba(56, 189, 248, 0.9)', 'rgba(56, 189, 248, 0.4)'],
+                coords: [
+                    [30.99, 78.94], [30.14, 78.60], [29.95, 78.16], [28.63, 79.82],
+                    [27.88, 79.92], [26.85, 80.91], [26.45, 80.35], [25.43, 81.85],
+                    [25.28, 82.99], [25.61, 85.14], [25.37, 86.47], [24.81, 87.93],
+                    [23.95, 88.15], [22.57, 88.36], [21.63, 88.30]
+                ]
+            },
+            {
+                name: 'Brahmaputra',
+                color: ['rgba(56, 189, 248, 0.8)', 'rgba(56, 189, 248, 0.35)'],
+                coords: [
+                    [28.22, 95.20], [27.47, 94.91], [27.30, 94.40], [26.75, 93.70],
+                    [26.19, 92.70], [26.14, 91.74], [26.10, 90.60], [25.80, 89.80],
+                    [25.20, 89.70], [24.00, 89.00], [23.50, 88.60], [22.57, 88.36]
+                ]
+            },
+            {
+                name: 'Godavari',
+                color: ['rgba(56, 189, 248, 0.85)', 'rgba(56, 189, 248, 0.35)'],
+                coords: [
+                    [19.99, 73.79], [19.85, 74.80], [19.50, 75.70], [19.15, 77.30],
+                    [18.68, 78.10], [18.40, 79.15], [17.73, 80.15], [17.00, 81.10],
+                    [16.74, 81.68], [16.50, 82.20]
+                ]
+            },
+            {
+                name: 'Krishna',
+                color: ['rgba(56, 189, 248, 0.85)', 'rgba(56, 189, 248, 0.35)'],
+                coords: [
+                    [17.92, 73.66], [17.40, 74.10], [16.85, 74.57], [16.70, 75.90],
+                    [16.50, 76.90], [16.30, 78.00], [16.18, 79.30], [16.51, 80.65],
+                    [15.90, 80.55], [15.70, 80.60]
+                ]
+            },
+            {
+                name: 'Kaveri',
+                color: ['rgba(56, 189, 248, 0.85)', 'rgba(56, 189, 248, 0.35)'],
+                coords: [
+                    [12.42, 75.74], [12.30, 76.10], [12.30, 76.66], [12.00, 77.00],
+                    [11.65, 77.60], [11.35, 78.00], [10.79, 78.69], [10.85, 79.20],
+                    [10.80, 79.80]
+                ]
+            },
+            {
+                name: 'Narmada',
+                color: ['rgba(56, 189, 248, 0.8)', 'rgba(56, 189, 248, 0.3)'],
+                coords: [
+                    [22.67, 81.75], [22.80, 80.60], [23.18, 79.95], [22.90, 78.80],
+                    [22.60, 77.80], [22.30, 76.40], [22.25, 75.50], [22.00, 74.50],
+                    [21.70, 73.00], [21.64, 72.63]
+                ]
+            },
+            {
+                name: 'Mahanadi',
+                color: ['rgba(56, 189, 248, 0.8)', 'rgba(56, 189, 248, 0.3)'],
+                coords: [
+                    [21.75, 81.69], [21.60, 82.50], [21.47, 83.97], [20.93, 84.80],
+                    [20.46, 85.88], [20.50, 86.30], [20.70, 86.90]
+                ]
+            },
+            {
+                name: 'Periyar',
+                color: ['rgba(56, 189, 248, 0.75)', 'rgba(56, 189, 248, 0.3)'],
+                coords: [
+                    [10.10, 77.06], [10.05, 76.80], [9.98, 76.50], [9.93, 76.27]
+                ]
+            },
+            {
+                name: 'Tamirabharani',
+                color: ['rgba(56, 189, 248, 0.75)', 'rgba(56, 189, 248, 0.3)'],
+                coords: [
+                    [8.60, 77.30], [8.65, 77.50], [8.70, 77.70], [8.72, 77.90], [8.76, 78.13]
+                ]
+            },
+            {
+                name: 'Cooum',
+                color: ['rgba(56, 189, 248, 0.8)', 'rgba(56, 189, 248, 0.35)'],
+                coords: [
+                    [13.04, 79.20], [13.05, 79.60], [13.04, 79.90], [13.05, 80.05], [13.06, 80.28]
+                ]
+            },
+            {
+                name: 'Adyar',
+                color: ['rgba(56, 189, 248, 0.8)', 'rgba(56, 189, 248, 0.35)'],
+                coords: [
+                    [12.83, 79.40], [12.88, 79.70], [12.83, 80.05], [12.92, 80.15], [13.01, 80.27]
+                ]
+            }
+        ];
+
+        // ── River Mouth Data ──
+        const RIVER_MOUTHS = [
+            { lat: 21.6,    lon: 88.3,    name: "Ganges-Brahmaputra Outflow" },
+            { lat: 8.9,     lon: 76.6,    name: "Periyar Outflow" },
+            { lat: 10.8,    lon: 79.8,    name: "Cauvery Outflow" },
+            { lat: 16.5,    lon: 82.2,    name: "Godavari Outflow" },
+            { lat: 15.7,    lon: 80.6,    name: "Krishna Outflow" },
+            { lat: 20.7,    lon: 86.9,    name: "Mahanadi Outflow" },
+            { lat: 13.0827, lon: 80.2707, name: "Chennai Adyar/Cooum Outflow" },
+            { lat: 8.7642,  lon: 78.1348, name: "Tamirabharani Outflow" }
+        ];
+
+        // ── Fetch API Data ──
+        const timestamp = new Date().getTime();
+        fetch('/api/data?t=' + timestamp)
+            .then(res => {
+                if (!res.ok) throw new Error("API not serving data");
+                document.getElementById('connection-status').innerText = 'Connected (FastAPI)';
+                return res.json();
+            })
+            .then(data => {
+                const overview = data.overview || [];
+                const topCells = (data.top_risk_cells || []).map(c => ({
+                    id: 'CELL-' + c.rank,
+                    zone: 'Grid Cell #' + c.rank,
+                    lat: c.lat,
+                    lon: c.lon,
+                    rmnpi: c.rmnpi,
+                    risk: c.risk,
+                    sst: c.sst,
+                    rainfall: c.rainfall || 0,
+                    discharge: c.discharge || 0,
+                    river: 'Open Ocean / Deep Water'
+                }));
+                globalData = [...overview, ...topCells];
+
+                if (data.metadata) {
+                    const statusEl = document.getElementById('connection-status');
+                    statusEl.innerHTML += ` <span style="color:rgba(255,255,255,0.4);font-size:10px;margin-left:6px;">(${data.metadata.start_date} to ${data.metadata.end_date})</span>`;
+                }
+                filteredData = [...globalData];
+                initGlobe();
+            })
+            .catch(err => {
+                console.warn("FastAPI offline or direct file access. Using backup static data...", err);
+                document.getElementById('connection-status').innerText = 'Local Sandbox';
+                if (window.parent && window.parent.OCEANIQ_DATA) {
+                    globalData = window.parent.OCEANIQ_DATA.overview || [];
+                } else if (window.OCEANIQ_DATA) {
+                    globalData = window.OCEANIQ_DATA.overview || [];
+                } else {
+                    globalData = [
+                        { "id": "Z-01", "zone": "Chennai Coastline", "river": "Cooum & Adyar", "rainfall": 312, "sst": 30.1, "discharge": 1450, "rmnpi": 0.87, "risk": "CRITICAL", "lat": 13.0827, "lon": 80.2707 },
+                        { "id": "Z-02", "zone": "Ganges Delta (Kolkata)", "river": "Ganges & Brahmaputra", "rainfall": 420, "sst": 29.5, "discharge": 3200, "rmnpi": 0.71, "risk": "HIGH", "lat": 22.5726, "lon": 88.3639 },
+                        { "id": "Z-03", "zone": "Mumbai Coastline", "river": "Ulhas", "rainfall": 580, "sst": 29.8, "discharge": 850, "rmnpi": 0.68, "risk": "HIGH", "lat": 18.9667, "lon": 72.8333 },
+                        { "id": "Z-04", "zone": "Kochi Backwaters", "river": "Periyar", "rainfall": 610, "sst": 28.9, "discharge": 620, "rmnpi": 0.44, "risk": "MODERATE", "lat": 9.9312, "lon": 76.2673 },
+                        { "id": "Z-05", "zone": "Visakhapatnam Bay", "river": "Meghadrigedda", "rainfall": 150, "sst": 29.2, "discharge": 400, "rmnpi": 0.38, "risk": "MODERATE", "lat": 17.6868, "lon": 83.2185 },
+                        { "id": "Z-06", "zone": "Mangalore Estuary", "river": "Netravathi & Gurupura", "rainfall": 820, "sst": 28.5, "discharge": 910, "rmnpi": 0.19, "risk": "LOW", "lat": 12.8688, "lon": 74.8436 },
+                        { "id": "Z-07", "zone": "Puducherry Coast", "river": "Gingee", "rainfall": 280, "sst": 30.4, "discharge": 110, "rmnpi": 0.91, "risk": "CRITICAL", "lat": 11.9416, "lon": 79.8083 },
+                        { "id": "Z-08", "zone": "Tuticorin Marine", "river": "Thamirabarani", "rainfall": 90, "sst": 30.2, "discharge": 80, "rmnpi": 0.63, "risk": "HIGH", "lat": 8.7642, "lon": 78.1348 }
+                    ];
+                }
+                filteredData = [...globalData];
+                initGlobe();
+            });
+
+        // ── Initialize Globe ──
+        function initGlobe() {
+            const container = document.getElementById('globe-viz');
+            globeInstance = Globe()(container)
+                .globeImageUrl('//unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
+                .bumpImageUrl('//unpkg.com/three-globe/example/img/earth-topology.png')
+                .backgroundImageUrl('')
+                .atmosphereColor('#1a6fa8')
+                .atmosphereAltitude(0.25)
+
+                // HTML Labels Layer (Cities, Oceans, Rivers) - Uses HTML overlays so pointer-events: none allows clicks to pass through!
+                .htmlElementsData(MAP_LABELS)
+                .htmlLat('lat')
+                .htmlLng('lon')
+                .htmlAltitude(0.01)
+                .htmlElement(d => {
+                    const el = document.createElement('div');
+                    el.style.display = 'flex';
+                    el.style.flexDirection = 'column';
+                    el.style.alignItems = 'center';
+                    el.style.pointerEvents = 'none'; // Magic! Allows clicking through the text
+                    el.style.color = d.type === 'ocean' ? 'rgba(0, 229, 255, 0.4)' : d.type === 'river' ? 'rgba(56, 189, 248, 0.9)' : 'rgba(255, 255, 255, 1.0)';
+                    el.style.fontFamily = "'Space Grotesk', sans-serif";
+                    el.style.fontSize = d.type === 'ocean' ? '22px' : d.type === 'river' ? '12px' : '16px';
+                    el.style.fontWeight = d.type === 'ocean' ? '700' : '500';
+                    el.style.letterSpacing = d.type === 'ocean' ? '0.2em' : '0.05em';
+                    el.style.textShadow = '0 2px 4px rgba(0,0,0,0.8), 0 0 10px rgba(0,0,0,0.5)';
+                    el.style.whiteSpace = 'nowrap';
+                    el.style.transform = 'translate(-50%, -50%)'; // Center perfectly
+
+                    if (d.type === 'city') {
+                        el.innerHTML = `<div style="width: 5px; height: 5px; background: white; border-radius: 50%; margin-bottom: 4px; box-shadow: 0 0 6px white;"></div>${d.name}`;
+                    } else {
+                        el.innerHTML = d.name;
+                    }
+                    return el;
+                })
+
+                // River Paths Layer (real geographic rivers)
+                .pathsData(RIVER_PATHS)
+                .pathPoints('coords')
+                .pathPointLat(p => p[0])
+                .pathPointLng(p => p[1])
+                .pathColor('color')
+                .pathStroke(3.0) // Increased from 1.8 for much better visibility
+                .pathDashLength(0.015)
+                .pathDashGap(0.008)
+                .pathDashAnimateTime(15000)
+                .pathTransitionDuration(0)
+
+                // Arcs Layer (Distance Lasers)
+                .arcsData([])
+                .arcStartLat(d => d.startLat)
+                .arcStartLng(d => d.startLon)
+                .arcEndLat(d => d.endLat)
+                .arcEndLng(d => d.endLon)
+                .arcColor('color')
+                .arcDashLength(0.4)
+                .arcDashGap(0.2)
+                .arcDashAnimateTime(1500)
+                .arcStroke(0.5)
+
+                // Points Layer (Risk Bars)
+                .pointLat('lat')
+                .pointLng('lon')
+                .pointRadius(d => d.risk === 'CRITICAL' ? 0.08 : d.risk === 'HIGH' ? 0.06 : 0.03)
+                .pointLabel(d => `
+                    <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:rgba(255,255,255,0.9);line-height:1.6;">
+                        <div style="font-weight:600;font-size:14px;color:#00E5FF;margin-bottom:4px;">${d.zone}</div>
+                        <b>RM-NPI Risk:</b> <span style="color:${riskColor(d.risk)}">${d.rmnpi} (${d.risk})</span><br/>
+                        <b>SST:</b> ${d.sst}°C<br/>
+                        ${d.rainfall ? `<b>Rainfall:</b> ${d.rainfall}mm<br/>` : ''}
+                        ${d.discharge ? `<b>Discharge:</b> ${d.discharge} m³/s` : ''}
+                    </div>
+                `)
+                .onPointHover(d => {
+                    hoverPoint = d;
+                    updateVisuals();
+                })
+                .onPointClick(d => {
+                    activePoint = d;
+                    updateVisuals();
+                    displayDetails(d);
+                    globeInstance.pointOfView({ lat: d.lat, lng: d.lon, alt: 1.0 }, 1000);
+
+                    // Dynamic Laser & Distance
+                    let closestCity = null;
+                    let minDist = Infinity;
+                    MAP_LABELS.filter(l => l.type === 'city').forEach(city => {
+                        let dist = haversineDist(d.lat, d.lon, city.lat, city.lon);
+                        if (dist < minDist) { minDist = dist; closestCity = city; }
+                    });
+                    if (closestCity) {
+                        const laser = {
+                            startLat: d.lat, startLon: d.lon,
+                            endLat: closestCity.lat, endLon: closestCity.lon,
+                            color: ['rgba(255, 107, 107, 1.0)', 'rgba(255, 107, 107, 0.0)']
+                        };
+                        globeInstance.arcsData([laser]);
+                        document.getElementById('cell-dist').innerText = `${minDist.toFixed(1)} km to ${closestCity.name}`;
+                    }
+                });
+
+            // Apply visuals
+            updateVisuals();
+
+            // River Outflow Rings
+            if (showRivers) {
+                globeInstance
+                    .ringsData(RIVER_MOUTHS)
+                    .ringLat('lat')
+                    .ringLng('lon')
+                    .ringColor(() => 'rgba(0, 229, 255, 0.6)')
+                    .ringMaxRadius(3)
+                    .ringPropagationSpeed(1.5)
+                    .ringRepeatPeriod(2000);
+            }
+
+            // Camera
+            globeInstance.pointOfView({ lat: 15.0, lng: 80.0, alt: 1.8 }, 500);
+
+            // Controls
+            const controls = globeInstance.controls();
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.1;
+        }
+
+        // ── Risk Color Helper ──
+        function riskColor(risk) {
+            if (risk === 'CRITICAL') return '#FF3B3B';
+            if (risk === 'HIGH') return '#FF8C42';
+            if (risk === 'MODERATE') return '#FFD166';
+            return '#06D6A0';
+        }
+
+        // ── Update Visuals ──
+        function updateVisuals() {
+            if (!globeInstance) return;
+
+            // Height: flat by default, raises on hover/click
+            globeInstance.pointAltitude(d => {
+                if (d === hoverPoint || d === activePoint) {
+                    if (currentMetric === 'rmnpi') return d.rmnpi * 0.35;
+                    if (currentMetric === 'sst') return (d.sst - 25) * 0.05;
+                    if (currentMetric === 'rainfall') return d.rainfall * 0.0006;
+                    if (currentMetric === 'discharge') return d.discharge * 0.00015;
+                    return 0.12;
+                }
+                return 0.01;
+            });
+
+            // Colors by risk
+            globeInstance.pointColor(d => riskColor(d.risk));
+
+            // Ripple rings on critical cells
+            const criticalCells = filteredData.filter(d => d.risk === 'CRITICAL');
+            globeInstance.ringsData(showRivers ? [...RIVER_MOUTHS, ...criticalCells] : criticalCells)
+                .ringColor(d => d.name ? 'rgba(0, 229, 255, 0.6)' : 'rgba(255, 59, 59, 0.5)')
+                .ringMaxRadius(d => d.name ? 3 : 1.5)
+                .ringPropagationSpeed(d => d.name ? 1.5 : 1.2)
+                .ringRepeatPeriod(d => d.name ? 2000 : 1000);
+
+            globeInstance.pointsData(filteredData);
+        }
+
+        // ── Metric Selection ──
+        function setMetric(metric) {
+            currentMetric = metric;
+            document.querySelectorAll('.metric-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${metric}`).classList.add('active');
+            updateVisuals();
+        }
+
+        // ── Risk Filter ──
+        function filterData() {
+            const filterVal = document.getElementById('risk-filter').value;
+            if (filterVal === 'ALL') {
+                filteredData = [...globalData];
+            } else if (filterVal === 'CRITICAL') {
+                filteredData = globalData.filter(d => d.risk === 'CRITICAL');
+            } else if (filterVal === 'HIGH') {
+                filteredData = globalData.filter(d => d.risk === 'CRITICAL' || d.risk === 'HIGH');
+            } else if (filterVal === 'MODERATE') {
+                filteredData = globalData.filter(d => d.risk !== 'LOW');
+            }
+            updateVisuals();
+        }
+
+        // ── Rotation Speed ──
+        function changeRotation(val) {
+            document.getElementById('rotation-val').innerText = val;
+            if (!globeInstance) return;
+            globeInstance.controls().autoRotate = (parseFloat(val) > 0);
+            globeInstance.controls().autoRotateSpeed = parseFloat(val);
+        }
+
+        // ── River Outflows Toggle ──
+        function toggleRiverMouths(isChecked) {
+            showRivers = isChecked;
+            if (!globeInstance) return;
+            updateVisuals();
+        }
+
+        // ── Display Details ──
+        function displayDetails(d) {
+            document.getElementById('cell-zone').innerText = d.zone;
+            document.getElementById('cell-coords').innerText = `Lat: ${d.lat.toFixed(2)}, Lon: ${d.lon.toFixed(2)}`;
+            document.getElementById('cell-river').innerText = d.river || 'Open Ocean / Deep Water';
+            document.getElementById('cell-rmnpi').innerText = d.rmnpi.toFixed(3);
+            document.getElementById('cell-sst').innerText = `${d.sst.toFixed(1)}°C`;
+            document.getElementById('cell-rainfall').innerText = `${d.rainfall} mm`;
+            document.getElementById('cell-discharge').innerText = `${d.discharge} m³/s`;
+
+            const npiValue = document.getElementById('cell-rmnpi');
+            const label = document.getElementById('cell-risk-label');
+            const container = document.getElementById('risk-container');
+            const actionText = document.getElementById('cell-action');
+
+            label.innerText = d.risk;
+            const color = riskColor(d.risk);
+            npiValue.style.color = color;
+
+            if (d.risk === 'CRITICAL') {
+                container.style.background = 'rgba(255, 59, 59, 0.08)';
+                container.style.border = '1px solid rgba(255, 59, 59, 0.3)';
+                label.style.background = 'rgba(255, 59, 59, 0.2)';
+                label.style.border = '1px solid rgba(255, 59, 59, 0.5)';
+                label.style.color = '#FF3B3B';
+                actionText.innerText = "🛑 CRITICAL THREAT ACTIVE: Immediate water sampling, chemical runoff bans, and alert bulletins issued to local fisheries.";
+            } else if (d.risk === 'HIGH') {
+                container.style.background = 'rgba(255, 140, 66, 0.08)';
+                container.style.border = '1px solid rgba(255, 140, 66, 0.3)';
+                label.style.background = 'rgba(255, 140, 66, 0.2)';
+                label.style.border = '1px solid rgba(255, 140, 66, 0.5)';
+                label.style.color = '#FF8C42';
+                actionText.innerText = "⚠️ HIGH RISK ALERT: Increase remote surveillance frequency and coordinate with river management to regulate outflow gates.";
+            } else if (d.risk === 'MODERATE') {
+                container.style.background = 'rgba(255, 209, 102, 0.08)';
+                container.style.border = '1px solid rgba(255, 209, 102, 0.3)';
+                label.style.background = 'rgba(255, 209, 102, 0.2)';
+                label.style.border = '1px solid rgba(255, 209, 102, 0.5)';
+                label.style.color = '#FFD166';
+                actionText.innerText = "🔍 MODERATE STRESS: Monitor satellite indices daily. Scheduled drone inspection of local estuaries in 72 hours.";
+            } else {
+                container.style.background = 'rgba(6, 214, 160, 0.08)';
+                container.style.border = '1px solid rgba(6, 214, 160, 0.3)';
+                label.style.background = 'rgba(6, 214, 160, 0.2)';
+                label.style.border = '1px solid rgba(6, 214, 160, 0.5)';
+                label.style.color = '#06D6A0';
+                actionText.innerText = "✅ STABLE ECOSYSTEM: Safe levels. Routine automatic background scraping and telemetry validation continues.";
+            }
+
+            const sidebar = document.getElementById('details-sidebar');
+            sidebar.classList.add('visible');
+        }
+
+        function closeDetails() {
+            const sidebar = document.getElementById('details-sidebar');
+            sidebar.classList.remove('visible');
+            sidebar.style.opacity = '0';
+            sidebar.style.transform = 'translateX(20px)';
+            sidebar.style.pointerEvents = 'none';
+        }
+    </script>
+
+    <!-- ═══ DECORATIVE: Bioluminescent Particles & Ambient Effects ═══ -->
+    <script>
+    (function() {
+        // Bioluminescent particle field
+        const particleContainer = document.createElement('div');
+        particleContainer.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden';
+        for (let i = 0; i < 50; i++) {
+            const p = document.createElement('div');
+            const size = Math.random() * 4 + 2;
+            const x = Math.random() * 100;
+            const y = Math.random() * 100;
+            const delay = Math.random() * 12;
+            const duration = Math.random() * 14 + 8;
+            const opacity = Math.random() * 0.18 + 0.05;
+            const color = Math.random() > 0.3
+                ? 'rgba(0,245,196,' + opacity + ')'
+                : 'rgba(0,180,255,' + opacity + ')';
+            p.style.cssText = 'position:absolute;width:' + size + 'px;height:' + size + 'px;'
+                + 'border-radius:50%;background:' + color + ';left:' + x + '%;top:' + y + '%;'
+                + 'box-shadow:0 0 ' + (size * 3) + 'px ' + color + ';'
+                + 'animation:particleFloat ' + duration + 's ease-in-out ' + delay + 's infinite alternate;';
+            particleContainer.appendChild(p);
+        }
+        document.body.appendChild(particleContainer);
+
+        // Ambient blobs
+        ['1','2'].forEach(function(i) {
+            var b = document.createElement('div');
+            b.className = 'ambient-blob ambient-blob-' + i;
+            document.body.insertBefore(b, document.body.firstChild);
+        });
+
+        // Bioluminescent tide
+        var tide = document.createElement('div');
+        tide.className = 'ocean-tide';
+        document.body.appendChild(tide);
+
+        // Panel tilt on mouse move (decorative only)
+        document.querySelectorAll('.panel-card').forEach(function(card) {
+            card.addEventListener('mousemove', function(e) {
+                var rect = card.getBoundingClientRect();
+                var x = (e.clientX - rect.left) / rect.width - 0.5;
+                var y = (e.clientY - rect.top) / rect.height - 0.5;
+                card.style.transform = 'rotateX(' + (-y * 3) + 'deg) rotateY(' + (x * 3) + 'deg)';
+                card.style.perspective = '600px';
+            });
+            card.addEventListener('mouseleave', function() {
+                card.style.transform = '';
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

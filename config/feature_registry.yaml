@@ -1,0 +1,124 @@
+# Dynamic Feature Registry — Real Data Sources
+# Each feature maps to a real API endpoint
+
+features:
+  # ── NOAA ERDDAP (public, no auth) ───────────────
+  sst:
+    source: "noaa_erddap"
+    dataset_id: "ncdcOisst21Agg_LonPM180"
+    variable: "sst"
+    group: "temporal"
+    npi_component: null
+    unit: "°C"
+    preprocessing:
+      normalize: "z_score"
+      impute: "linear_interpolation"
+      temporal_lags: [1, 7, 30]
+
+  sst_anomaly:
+    source: "noaa_erddap"
+    dataset_id: "ncdcOisst21Agg_LonPM180"
+    variable: "anom"
+    group: "temporal"
+    npi_component: null
+    unit: "°C"
+    preprocessing:
+      normalize: "z_score"
+      impute: "linear_interpolation"
+      temporal_lags: [1, 7]
+
+  # ── NASA Earthdata (ERDDAP mirror or Earthdata login) ──
+  chlorophyll_a:
+    source: "nasa_earthdata"
+    dataset_id: "erdMH1chlamday"
+    variable: "chlorophyll"
+    group: "temporal"
+    npi_component: "N"           # Nutrient Proxy
+    unit: "mg/m³"
+    preprocessing:
+      normalize: "log_then_minmax"
+      impute: "forward_fill"
+      temporal_lags: [1, 7, 30]
+    notes: "Chlorophyll-a → Nutrient proxy. log10(chlor) normalized -2..1 → 0..1"
+
+  # ── Copernicus Marine (needs credentials) ────────
+  salinity:
+    source: "copernicus_marine"
+    dataset_id: "cmems_mod_glo_phy_my_0.083deg_P1D-m"
+    variable: "so"
+    group: "temporal"
+    npi_component: null
+    unit: "PSU"
+    preprocessing:
+      normalize: "z_score"
+      impute: "knn"
+      temporal_lags: [1, 7]
+
+  sea_temperature:
+    source: "copernicus_marine"
+    dataset_id: "cmems_mod_glo_phy_my_0.083deg_P1D-m"
+    variable: "thetao"
+    group: "temporal"
+    npi_component: null
+    unit: "°C"
+    preprocessing:
+      normalize: "z_score"
+      impute: "linear_interpolation"
+      temporal_lags: [1, 7]
+
+  current_speed:
+    source: "copernicus_marine"
+    dataset_id: "cmems_mod_glo_phy_my_0.083deg_P1D-m"
+    variable: "computed_from_uo_vo"
+    group: "spatial"
+    npi_component: null
+    unit: "m/s"
+    preprocessing:
+      normalize: "min_max"
+      impute: "linear_interpolation"
+      temporal_lags: [1]
+
+  sea_surface_height:
+    source: "copernicus_marine"
+    dataset_id: "cmems_mod_glo_phy_my_0.083deg_P1D-m"
+    variable: "zos"
+    group: "spatial"
+    npi_component: null
+    unit: "m"
+    preprocessing:
+      normalize: "z_score"
+      impute: "linear_interpolation"
+      temporal_lags: [1]
+
+  # ── CHIRPS Rainfall (public, no auth) ────────────
+  rainfall:
+    source: "chirps"
+    dataset_id: "CHIRPS-2.0"
+    variable: "precip"
+    group: "temporal"
+    npi_component: "S"            # Seasonal Factor
+    unit: "mm/day"
+    preprocessing:
+      normalize: "min_max_200"
+      impute: "knn"
+      temporal_lags: [1, 7, 30]
+    notes: "Rainfall → Seasonal factor. 0mm→S=0, 200+mm→S=1"
+
+  # ── Computed from grid coordinates ───────────────
+  distance_decay:
+    source: "computed"
+    variable: null
+    group: "spatial"
+    npi_component: "D"            # Distance Decay
+    unit: "dimensionless"
+    preprocessing:
+      normalize: null
+      impute: null
+      temporal_lags: []
+    notes: "D = exp(-α × min_dist_to_river_mouth), α=0.05/km"
+
+# ── RM-NPI Component Mapping ──────────────────────
+# Q = River Discharge → currently derived from rainfall + river mouth proximity
+# N = Nutrient Load   → chlorophyll_a (proxy)
+# S = Seasonal Factor → rainfall (monsoon intensity)
+# D = Distance Decay  → computed from coordinates

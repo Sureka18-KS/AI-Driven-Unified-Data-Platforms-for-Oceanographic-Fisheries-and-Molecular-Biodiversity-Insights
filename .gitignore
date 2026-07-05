@@ -1,0 +1,17 @@
+.env
+.env.*
+data/raw/
+data/processed/
+data/models/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+venv/
+env/
+.venv/
+
+# Node
+node_modules/
+frontend/node_modules/
+.vite/
+dist/

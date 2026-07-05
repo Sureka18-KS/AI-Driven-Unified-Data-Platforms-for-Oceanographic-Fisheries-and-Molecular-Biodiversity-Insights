@@ -1,0 +1,78 @@
+# AI-Driven Unified Data Platform — Global Settings
+
+project:
+  name: "AI-Ocean-Platform"
+  version: "1.0.0"
+
+grid:
+  default_resolution: 0.25          # degrees (adjustable per tier)
+  bounding_box:
+    lat_min: -10.0
+    lat_max: 30.0
+    lon_min: 60.0
+    lon_max: 100.0                  # Indian Ocean region
+
+model:
+  latent_npi: 12
+  latent_disc: 20
+  encoder_hidden: [64, 48, 32]
+  learning_rate: 0.001
+  batch_size: 256
+  epochs: 100
+  early_stopping_patience: 10
+
+  # Hybrid RM-NPI initial weights (refined by model during training)
+  npi_initial_weights:
+    Q: 1.0    # River Discharge
+    N: 1.0    # Nutrient Load
+    S: 0.8    # Seasonal Factor
+    D: 1.0    # Distance Decay
+
+  # Loss function coefficients
+  loss:
+    alpha_recon: 1.0
+    beta_npi: 0.5
+    beta_comp: 0.3
+    gamma_ortho: 0.3
+    delta_weight: 0.1
+
+datacenter:
+  thresholds:
+    npi_hot: 0.7
+    npi_warm: 0.3
+    disc_anomaly: 0.85
+  storage_tiers:
+    hot: "ssd_replicated"
+    warm: "hdd_indexed"
+    cold: "s3_archive"
+  seasonal_prescale:
+    base_gpus: 2
+    max_gpus: 8
+
+optimization:
+  latent_cache:
+    enabled: true
+    capacity: 50000
+    epsilon: 0.02
+  selective_reprocessing:
+    enabled: true
+    error_percentile: 80
+  adaptive_tiling:
+    enabled: true
+    critical_resolution: 0.05
+    minimal_resolution: 1.0
+  feature_pruning:
+    enabled: true
+    prune_threshold_pct: 10
+
+intelligence:
+  cycle_interval_hours: 6
+  anomaly_threshold_percentile: 95
+  trend_start_year: 2021
+  similarity_top_k: 3
+  quality_error_share_threshold: 25
+
+paths:
+  raw_data: "data/raw"
+  processed_data: "data/processed"
+  model_checkpoints: "data/models"

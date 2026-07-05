@@ -1,0 +1,17 @@
+{
+    "timestamp": "2026-06-15T12:22:29.688838",
+    "region_metrics": {
+        "total_grid_cells_analyzed": 34538,
+        "date_range": "2026-05-13 to 2026-05-26"
+    },
+    "biodiversity_threats": [
+        {
+            "threat_type": "Coral Bleaching / Marine Heatwave",
+            "severity": "MODERATE",
+            "affected_cells": 575,
+            "percentage_of_ocean": 1.66,
+            "trigger_metric": "Sea Surface Temperature (thetao)",
+            "description": "Temperatures exceeded the heatwave threshold of 31.42\u00b0C, putting coral reefs and stationary marine life at high risk of thermal stress and bleaching."
+        }
+    ]
+}

@@ -1,0 +1,29 @@
+services:
+  # 1. The Backend API
+  - type: web
+    name: backend
+    env: docker
+    dockerfilePath: ./backend.Dockerfile
+    plan: starter # Starter plan is recommended for data processing (RAM)
+    region: ohio
+    disk:
+      name: coral-data
+      mountPath: /app/data
+      sizeGB: 10 # 10GB persistent storage for Parquet files
+    envVars:
+      - key: LOG_LEVEL
+        value: INFO
+      # Add API keys here securely in the Render dashboard later
+      - key: NOAA_ERDDAP_BASE_URL
+        value: https://coastwatch.pfeg.noaa.gov/erddap
+
+  # 2. The Frontend Dashboard
+  - type: web
+    name: frontend
+    env: docker
+    dockerfilePath: ./frontend/frontend.Dockerfile
+    plan: free # Frontend can run on the free tier
+    region: ohio
+    envVars:
+      - key: NODE_ENV
+        value: production

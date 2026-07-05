@@ -1,0 +1,25 @@
+{
+    "timestamp": "2026-06-14T17:37:25.984606",
+    "region_metrics": {
+        "total_grid_cells_analyzed": 4081937,
+        "date_range": "2010-01-01 to 2013-01-01"
+    },
+    "biodiversity_threats": [
+        {
+            "threat_type": "Coral Bleaching / Marine Heatwave",
+            "severity": "MODERATE",
+            "affected_cells": 21307,
+            "percentage_of_ocean": 0.52,
+            "trigger_metric": "Sea Surface Temperature (thetao)",
+            "description": "Temperatures exceeded the heatwave threshold of 31.02\u00b0C, putting coral reefs and stationary marine life at high risk of thermal stress and bleaching."
+        },
+        {
+            "threat_type": "Food Web Collapse / Fish Migration",
+            "severity": "WARNING",
+            "affected_cells": 204098,
+            "percentage_of_ocean": 5.0,
+            "trigger_metric": "Chlorophyll (Phytoplankton base)",
+            "description": "A severe drop in foundational phytoplankton detected in 204098 zones. This disrupts the exact base of the marine food web, forcing massive commercial fish populations, dolphins, and whales to migrate elsewhere to survive."
+        }
+    ]
+}
